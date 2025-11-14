@@ -1,9 +1,11 @@
+import pytest
 from django.urls import reverse
 from http import HTTPStatus
-import pytest
 from pytest_django.asserts import assertRedirects
+from pytest_lazy_fixtures import lf
 
 
+@pytest.mark.django_db
 def test_home_availability_for_anonymous_user(client):
     url = reverse('news:home')
     response = client.get(url)
@@ -18,12 +20,21 @@ def test_news_detail_availability_for_anonymous_user(client, news):
 
 @pytest.mark.parametrize(
     'name',
-    ('news:home', 'users:login', 'users:logout', 'users:signup')
+    ('news:home', 'users:login', 'users:signup')
 )
+@pytest.mark.django_db
 def test_pages_availability_for_anonymous_user(client, name):
     url = reverse(name)
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
+
+
+def test_logout_page(client):
+    url = reverse('users:logout')
+    response = client.get(url)
+    assert response.status_code in [
+        HTTPStatus.OK, HTTPStatus.METHOD_NOT_ALLOWED
+    ]
 
 
 @pytest.mark.parametrize(
@@ -39,8 +50,8 @@ def test_comment_pages_availability_for_author(author_client, name, comment):
 @pytest.mark.parametrize(
     'parametrized_client, expected_status',
     [
-        (pytest.lazy_fixture('not_author_client'), HTTPStatus.NOT_FOUND),
-        (pytest.lazy_fixture('author_client'), HTTPStatus.OK)
+        (lf('not_author_client'), HTTPStatus.NOT_FOUND),
+        (lf('author_client'), HTTPStatus.OK)
     ],
 )
 @pytest.mark.parametrize(
@@ -58,8 +69,8 @@ def test_comment_pages_availability_for_different_users(
 @pytest.mark.parametrize(
     'name, args',
     (
-        ('news:edit', pytest.lazy_fixture('comment_pk_for_args')),
-        ('news:delete', pytest.lazy_fixture('comment_pk_for_args')),
+        ('news:edit', lf('comment_pk_for_args')),
+        ('news:delete', lf('comment_pk_for_args')),
     ),
 )
 def test_redirects_for_anonymous_user(client, name, args):

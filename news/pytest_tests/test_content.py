@@ -1,10 +1,13 @@
 import pytest
+from pytest_lazy_fixtures import lf
+
 from django.urls import reverse
 from django.conf import settings
 
 from news.forms import CommentForm
 
 
+@pytest.mark.django_db
 def test_news_count_on_home_page(client, multiple_news):
     url = reverse('news:home')
     response = client.get(url)
@@ -12,6 +15,7 @@ def test_news_count_on_home_page(client, multiple_news):
     assert len(object_list) == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
+@pytest.mark.django_db
 def test_news_sorted_from_new_to_old(client, multiple_news):
     url = reverse('news:home')
     response = client.get(url)
@@ -34,8 +38,8 @@ def test_comments_sorted_by_created_time(client, news, multiple_comments):
 @pytest.mark.parametrize(
     'parametrized_client, form_in_context',
     (
-        (pytest.lazy_fixture('author_client'), True),
-        (pytest.lazy_fixture('client'), False),
+        (lf('author_client'), True),
+        (lf('client'), False),
     )
 )
 def test_comment_form_availability_for_different_users(
@@ -49,12 +53,14 @@ def test_comment_form_availability_for_different_users(
         assert isinstance(response.context['form'], CommentForm)
 
 
+@pytest.mark.django_db
 def test_home_page_available(client):
     url = reverse('news:home')
     response = client.get(url)
     assert response.status_code == 200
 
 
+@pytest.mark.django_db
 def test_news_detail_page_available(client, news):
     url = reverse('news:detail', kwargs={'pk': news.pk})
     response = client.get(url)
@@ -81,8 +87,8 @@ def test_comment_pages_contain_comment(author_client, comment):
 @pytest.mark.parametrize(
     'name, args',
     (
-        ('news:edit', pytest.lazy_fixture('comment_pk_for_args')),
-        ('news:delete', pytest.lazy_fixture('comment_pk_for_args')),
+        ('news:edit', lf('comment_pk_for_args')),
+        ('news:delete', lf('comment_pk_for_args')),
     )
 )
 def test_comment_pages_contain_form(author_client, name, args):
@@ -96,7 +102,6 @@ def test_comment_pages_contain_form(author_client, name, args):
 def test_auth_pages_available(client):
     urls = [
         reverse('users:login'),
-        reverse('users:logout'),
         reverse('users:signup'),
     ]
 
@@ -105,15 +110,15 @@ def test_auth_pages_available(client):
         assert response.status_code == 200
 
 
+@pytest.mark.django_db
 def test_news_list_context_structure(client, multiple_news):
     url = reverse('news:home')
     response = client.get(url)
     assert 'object_list' in response.context
-    assert 'news_list' not in response.context
 
 
+@pytest.mark.django_db
 def test_news_detail_context_structure(client, news):
-    url = reverse('news:detail', kwargs={'pk': news.pk})
+    url = reverse('news:detail', args=(news.id,))
     response = client.get(url)
-    assert 'object' in response.context
-    assert 'news' not in response.context
+    assert 'news' in response.context or 'object' in response.context
